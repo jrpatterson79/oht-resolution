@@ -3,15 +3,14 @@
 clear; close all; clc;
 
 %% Specify Directory
-addpath(genpath('/.../.../'))
+addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models
 %PARAMETERS: Visualization and saving options
-case_name = '2_freq';
+case_name = '4_freq';
 
 %PARAMETERS: Associated with domain and testing setup
 %Specify domain
-% [domain] = equigrid_setup(x_disc,y_disc);
 xmin = -100; xmax = -xmin; dx = 2;
 ymin = xmin; ymax = xmax; dy = dx;
 
@@ -49,9 +48,11 @@ num_wells = size(well_locs,1);
 V = 0.01;
 % Q_max = 7e-5;
 
+% P = 10;
 % P = 100;
-P = [10 1600];
-% P = [10 50 300 1600];
+% P = 1600;
+% P = [10 1600];
+P = [10 50 300 1600];
 % P = [10 50 90 300 700 1600];
 % P = [10 30 50 90 200 300 700 1600];
 
@@ -72,29 +73,32 @@ end
 % PARAMETERS: Associated with creating test case for fields
 
 % Geostatistical parameters
-lnK_mean = -9.2;   % Mean log(hydraulic conductivity (m/s))
-lnSs_mean = -11.2; % Mean log(specific storage (1/m))
+lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnSs_mean = -11.2; % Mean log(storativity (-))
 
-lnK_var = 2;    % Variance log(hydraulic conductivity (m/s))
-lnSs_var = 0.4; % Variance log(specific storage (1/m))
+lnK_var = 2;    % Variance log(transmissivity (m^2/s))
+lnSs_var = 0.5; % Variance log(storativity (-))
 
 corr_x = 20; % x correlation length (m)
 corr_y = 20; % y correlation length (m)
 
-% PARAMETERS: Associated with inversion setup
-lnK_guess = -9;    % Initial guess hydraulic conductivity
-lnSs_guess = -11;  % Initial guess specific storage
 
-lnK_var_est = 1;    % Estimated variance - hydraulic conductivity
-lnSs_var_est = 0.1; % Estimated variance - specific storage
+% PARAMETERS: Associated with inversion setup
+lnK_guess = -9;    % Initial guess transmissivity
+lnSs_guess = -11;  % Initial guess storativity
+
+lnK_var_est = 1;    % Estimated variance - transmissivity
+lnSs_var_est = 0.5; % Estimated variance - storativity
 
 %% Create the "official" input files needed by the steady periodic model.
 
-%This step should automatically create the input files needed to run all of
+%This step automatically creates the input files needed to run all of
 %the steady periodic models.
+
 [experiment] = OHT_create_inputs(well_locs,test_list,domain);
 
 %% Calculate counts (used often for plotting and other functionality)
+
 % Calculates number of observations, size of grid, and sets up a
 % meshgridded set of points to do plotting of results.
 
@@ -111,8 +115,7 @@ num_cells = num_x*num_y;
 num_relz = 100;
 parfor a = 1 : num_relz
     randn('state', a)
-    %Geostatistical Case (Exponential variogram)
-    %TODO: Allow choice of different variogram models?
+    % Generate heterogeneous parameter fields (Exponential variogram model)
     distmat_row = dimdist(coords(1,:),coords);
     corr_row = exp(-(...
         (distmat_row(:,:,1)./corr_x).^2 + ...
@@ -139,8 +142,6 @@ parfor a = 1 : num_relz
     % negative B)
     %
     % The second output is the full phasor field for each pumping test.
-    % TODO: May change this so that it is the given pumping test for each
-    % observation. Also, need to add description of structure.
     %
     % H is the sensitivity matrix. Each row represents a different observation,
     % organized the same way as sim_obs. Each column represents a different
@@ -178,8 +179,8 @@ parfor a = 1 : num_relz
     %% Add noise to synthetic data timeseries
     %Parameters used in creating synthetic time-series data and associated
     %noise
-    tseries_sd = 0.5e-3;  % Head time-series error standard deviation (m)
-    tseries_step = 1/125; % Time-series time step (125 Hz sampling frequency)
+    tseries_sd = 0.5e-3;
+    tseries_step = 1/125;
 
     obs_phasor_vec = zeros(2*num_obs,1);
     obs_phasor_covar = zeros(2*num_obs,2*num_obs);
@@ -212,10 +213,7 @@ parfor a = 1 : num_relz
         obs_phasor_covar(o+num_obs,o+num_obs) = phasor_covar_est(2,2);
     end
 
-    %% Prior setup
-    %TODO: Allow choice of different variogram models?
-    % Assumed linear variogram prior parameter covariance
-    distmat_row = dimdist(coords(1,:),coords);
+    %% Prior setup - Linear Variogram Model
     max_dist = max(max((distmat_row(:,:,1).^2 + distmat_row(:,:,2).^2).^.5));
     slope = 1/max_dist;
 
@@ -224,9 +222,9 @@ parfor a = 1 : num_relz
                  distmat_row(:,:,2).^2).^.5));
 
     %% Inversion
-    R = obs_phasor_covar; % Data error covariance matrix
-    beta_init = [lnK_guess; lnSs_guess]; % Initial parameter guess
-    X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)]; % Parameter drift matrix
+    R = obs_phasor_covar;
+    beta_init = [lnK_guess; lnSs_guess];
+    X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
     y = obs_phasor_vec;
     coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
 
@@ -242,11 +240,11 @@ parfor a = 1 : num_relz
     y_obs_mat(:,a) = y;
     params_true_mat(:,a) = params_true;
 
-    params_best_mat(:,a) = params_best; % Optimal parameters
-    beta_best_vec(a,:) = beta_best; % Optimal mean parameters
+    params_best_mat(:,a) = params_best;
+    beta_best_vec(a,:) = beta_best;
 end
 
 %% Save output
-save_dir = '/.../.../'; % Directory to save output .mat file
+save_dir = '/.../.../.../';
 save_name = ['stoch_' case_name '.mat'];
 save([save_dir save_name])

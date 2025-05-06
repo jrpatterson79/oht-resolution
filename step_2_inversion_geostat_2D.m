@@ -2,18 +2,17 @@
 clear all; close all; clc;
 
 %% Specify Directory
-addpath(genpath('/.../.../'))
+addpath(genpath('/.../.../.../'))
 
-%% Forward Model Setup
+%% Describe the setup for the forward models
 seed = 0;
 randn('state', seed)
 
 %PARAMETERS: Visualization and saving options
 pause_length = 0.01;
-case_name = '4_freq_test';
+case_name = '2_freq';
 
 %PARAMETERS: Associated with domain and testing setup
-
 %Specify domain
 xmin = -100; xmax = -xmin; dx = 2;
 ymin = xmin; ymax = xmax; dy = dx;
@@ -44,13 +43,14 @@ well_locs = [-20 -20; ...
 
 num_wells = size(well_locs,1);
 
-% Pumping parameters - Currently setup to run volume constrained
-% simulations. Can run flow rate constrained simulations by changing
-% colmun 3 of test_list below from (V*pi)/P to Q_max
-V = 0.01; % Total volume cycled during 1 period (m^3)
-Q_max = 7e-5; % Peak flow rate (m^3/s)
+% List defining each observation. Columns are:
+% pumping angular frequency, pumping well, Q_max, and observation well
+% NOTE: The model will run the fastest if this list is sorted by angular
+% frequency and pumping well (the first two columns)
+%
+V = 0.01;
+% Q_max = 7e-5;
 
-% Pumping periods (s)
 % P = 10;
 % P = 100;
 % P = 1600;
@@ -59,10 +59,6 @@ P = [10 50 300 1600];
 % P = [10 50 90 300 700 1600];
 % P = [10 30 50 90 200 300 700 1600];
 
-% List defining each observation. Columns are:
-% pumping angular frequency, pumping well, Q_max, and observation well
-% NOTE: The model will run the fastest if this list is sorted by angular
-% frequency and pumping well (the first two columns)
 test_list = [];
 tseries_length = [];
 for i = 1:1:numel(P)
@@ -79,28 +75,27 @@ for i = 1:1:numel(P)
 end
 
 % PARAMETERS: Associated with creating test case for fields
-lnK_mean = -9.2;   % Mean hydraulic conductivity (m/s)
-lnSs_mean = -11.2; % Mean specific storage (1/m)
 
-% Correlation length
-corr_x = 20;
-corr_y = 20;
+%Used by both methods
+lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnSs_mean = -11.2; % Mean log(storativity (-))
 
-% Parameter variance
-lnK_var = 2;
-lnSs_var = 0.4;
+lnK_var = 2;    % Variance log(transmissivity (m^2/s))
+lnSs_var = 0.5; % Variance log(storativity (-))
+
+corr_x = 20; % x correlation length (m)
+corr_y = 20; % y correlation length (m)
+
 
 % PARAMETERS: Associated with inversion setup
-lnK_guess = -9;   % Initial K guess
-lnSs_guess = -11; % Initial Ss guess
+lnK_guess = -9;    % Initial guess transmissivity
+lnSs_guess = -11;  % Initial guess storativity
 
-% Parameter estimated variance vector (Regularization parameters)
-lnK_var_est = 10.^(-8:1:4);
-lnSs_var_est = 0.1*ones(size(lnK_var_est));
+lnK_var_est = 10.^(-8:1:4);                  % Estimated variance - transmissivity
+lnSs_var_est = 0.5*ones(size(lnK_var_est));  % Estimated variance - storativity
 
 %% Create the "official" input files needed by the steady periodic model.
-
-%This step should automatically create the input files needed to run all of
+%This step automatically creates the input files needed to run all of
 %the steady periodic models.
 
 [experiment] = OHT_create_inputs(well_locs,test_list,domain);
@@ -118,7 +113,6 @@ num_cells = num_x*num_y;
 
 %% Setup grid of cell centers for plotting and geostatistical setups
 [coords, cgrid] = plaid_cellcenter_coord(domain);
-distmat_row = dimdist(coords(1,:),coords);
 
 %% Visualize inputs
 
@@ -135,37 +129,40 @@ distmat_row = dimdist(coords(1,:),coords);
 % This will loop through all observations as you hit <Enter>, showing the
 % model inputs for each individual model run that generates an observation.
 
-% fig_srcobs_weights = figure(1);
-% set(fig_srcobs_weights,'Position',[58 726 1100 600])
-% pause(1)
-% for i = 1:1:num_omegas
-%     disp(['Period = ', num2str(2*pi./experiment(i).omega)]);
-%     num_testobs = size(experiment(i).tests,1);
-%     for j = 1:1:num_testobs
-%         pump_loc = experiment(i).tests(j,1);
-%         obs_loc = experiment(i).tests(j,2);
-%         subplot(1,2,1)
-%         pumpmap = reshape(full(experiment(i).stims(:,pump_loc)),num_y,num_x);
-%         pm = pcolor(cgrid{1},cgrid{2},pumpmap);
-%         set(pm,'LineStyle','none')
-%         colorbar
-%         title(['Period group ', num2str(i), ', Pump weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([xmin xmax ymin ymax])
-%         subplot(1,2,2)
-%         obsmap = reshape(full(experiment(i).obs(:,obs_loc)),num_y,num_x);
-%         om = pcolor(cgrid{1},cgrid{2},obsmap);
-%         set(om,'LineStyle','none')
-%         colorbar
-%         title(['Period group ', num2str(i), ', Observation weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([xmin xmax ymin ymax])
-% 
-%         pause(pause_length)
-%     end
-% end
+fig_srcobs_weights = figure(1);
+set(fig_srcobs_weights,'Position',[58 726 1100 600])
+pause(1)
+for i = 1:1:num_omegas
+    disp(['Period = ', num2str(2*pi./experiment(i).omega)]);
+    num_testobs = size(experiment(i).tests,1);
+    for j = 1:1:num_testobs
+        pump_loc = experiment(i).tests(j,1);
+        obs_loc = experiment(i).tests(j,2);
+        subplot(1,2,1)
+        pumpmap = reshape(full(experiment(i).stims(:,pump_loc)),num_y,num_x);
+        pm = pcolor(cgrid{1},cgrid{2},pumpmap);
+        set(pm,'LineStyle','none')
+        colorbar
+        title(['Period group ', num2str(i), ', Pump weights, test/obs pair #', num2str(j)]);
+        axis equal
+        axis([xmin xmax ymin ymax])
+        subplot(1,2,2)
+        obsmap = reshape(full(experiment(i).obs(:,obs_loc)),num_y,num_x);
+        om = pcolor(cgrid{1},cgrid{2},obsmap);
+        set(om,'LineStyle','none')
+        colorbar
+        title(['Period group ', num2str(i), ', Observation weights, test/obs pair #', num2str(j)]);
+        axis equal
+        axis([xmin xmax ymin ymax])
+
+        pause(pause_length)
+    end
+end
 
 %% For synthetic problem - true parameter field statistics
+
+% Generate heterogeneous transmissivity field (Exponential variogram model)
+distmat_row = dimdist(coords(1,:),coords);
 corr_row = exp(-(...
     (distmat_row(:,:,1)./corr_x).^2 + ...
     (distmat_row(:,:,2)./corr_y).^2).^.5);
@@ -177,47 +174,27 @@ params_true = [lnK_true; lnSs_true];
 lnK_range = [min(lnK_true) max(lnK_true)];
 lnSs_range = [min(lnSs_true) max(lnSs_true)];
 
-% Figure 3 - geostatistical realization
-figure(3)
+% Figure 3 - Transmissivity realization
+figure (3)
 clf
-subplot(1,2,1)
 ax = gca;
-p3 = pcolor(cgrid{1}, cgrid{2}, reshape(lnK_true, num_y, num_x));
+p3 = pcolor(cgrid{1}, cgrid{2}, reshape(log10(exp(lnK_true)), num_y, num_x));
 p3.LineStyle = 'none';
 hold on
 plot(well_locs(:,1), well_locs(:,2), 'ko', 'LineWidth', 2,...
-     'MarkerFaceColor', [192/255 16/255 0], 'MarkerSize', 9)
+     'MarkerFaceColor', [192/255 16/255 0], 'MarkerSize', 12)
 axis equal; axis square
-axis([-50 50 -50 50])
+axis([-95 95 -95 95])
 ax.XTick = [-50:25:50]; 
 ax.YTick = [-50:25:50];
-xlabel('X direction (m)')
-ylabel('Y direction (m)')
+xlabel('X (m)')
+ylabel('Y (m)')
 c = colorbar;
-c.Label.String = 'ln(K [m/s])';
-c.FontSize = 20;
-caxis([lnK_range(1) lnK_range(2)])
-ax.FontSize = 20;
-
-subplot(1,2,2)
-ax = gca;
-p4 = pcolor(cgrid{1}, cgrid{2}, reshape(lnSs_true, num_y, num_x));
-p4.LineStyle = 'none';
-hold on
-plot(well_locs(:,1), well_locs(:,2), 'ko', 'LineWidth', 2,...
-     'MarkerFaceColor', [192/255 16/255 0], 'MarkerSize', 9)
-axis equal; axis square
-axis([-50 50 -50 50])
-ax.XTick = [-50:25:50]; 
-ax.YTick = [-50:25:50];
-xlabel('X direction (m)')
-ylabel('Y direction (m)')
-c = colorbar;
-c.Label.String = 'ln(Ss [m/s])';
-c.FontSize = 18;
-caxis([lnSs_range(1) lnSs_range(2)])
-ax.FontSize = 20;
-set(gcf, 'Position', [100 100 2025 2025/2.75])
+c.Label.String = 'log_{10}(T [m^2/s])';
+c.FontSize = 24;
+caxis([log10(exp(lnK_range(1))) log10(exp(lnK_range(2)))])
+ax.FontSize = 30;
+set(gcf, 'Position', [100 100 975 975/1.3333])
 pause
 close
 
@@ -274,8 +251,8 @@ toc
 %% Add noise to synthetic data timeseries
 %Parameters used in creating synthetic time-series data and associated
 %noise
-tseries_sd = 0.5e-3; % Head time-series measurement error (standard deviation)
-tseries_step = 1/125; % Time-series time step (125 Hz sampling frequency)
+tseries_sd = 0.5e-3;
+tseries_step = 1/125;
 
 obs_phasor_vec = zeros(2*num_obs,1);
 obs_phasor_covar = zeros(2*num_obs,2*num_obs);
@@ -297,8 +274,6 @@ for o = 1:1:num_obs
     disp(['Estimated phasor: ', num2str(obs_phasor(1)), ', ', num2str(obs_phasor(2))])
     disp(['Time Series Noise Estimate: ', num2str(tseries_err_est)])
     phasor_covar_est = (tseries_err_est.^2*inv(M'*M));
-    %TODO: Update this for efficiency / less output
-    %TODO: Make sure that covariance propagation setup is correct
     
     %Placements of phasors into observation vector, and covariance values
     %(calculated via linear covariance propagation) into covariance matrix.
@@ -311,14 +286,13 @@ for o = 1:1:num_obs
 end
 
 %% Cross-checks - visualize results and sensitivities
-
 %These cross-checks are used simply to make sure that the model appears to
 %be running correctly. We calculate the amplitude and phase first (which
 %are more intuitive than A and B), and then look at how these vary with
 %space.
 %
 %The second set of plots looks at the sensitivity structure of the signal
-%amplitude to K and Ss, which should look like "blobs" centered around the
+%amplitude to T and S, which should look like "blobs" centered around the
 %pumping and observation well for each observation.
 
 A_obs = sim_phasor(1:num_obs);
@@ -338,71 +312,71 @@ H_ASs = H_adj((1:num_obs),((num_cells+1):(2*num_cells)));
 H_BSs = H_adj((num_obs+1):(2*num_obs),((num_cells+1):(2*num_cells)));
 
 % Check all phasor fields produced through numerical model running
-% fig_phaseamp = figure(3);
-% set(fig_phaseamp,'Position',[859 727 1100 600])
-% pause(1)
+fig_phaseamp = figure;
+set(fig_phaseamp,'Position',[859 727 1100 600])
+pause(1)
 
 num_totalstims = size(amp_full,2);
-% for i = 1:1:num_totalstims
-%     amp_field = reshape(log(amp_full(:,i)),num_y,num_x);
-%     phase_field = reshape(phase_full(:,i),num_y,num_x);
-%     subplot(1,2,1);
-%     pc2 = pcolor(cgrid{1},cgrid{2},amp_field);
+for i = 1:1:num_totalstims
+    amp_field = reshape(log(amp_full(:,i)),num_y,num_x);
+    phase_field = reshape(phase_full(:,i),num_y,num_x);
+    subplot(1,2,1);
+    pc2 = pcolor(cgrid{1},cgrid{2},amp_field);
+    set(pc2,'LineStyle','none')
+    title(['Pumping test ', num2str(i), ', ln(Amplitude) field'])
+    axis equal
+    axis([xmin xmax ymin ymax])
+    subplot(1,2,2);
+    pc3 = pcolor(cgrid{1},cgrid{2},phase_field);
+    set(pc3,'LineStyle','none')
+    title(['Pumping test ', num2str(i), ', Phase field'])
+    axis equal
+    axis([xmin xmax ymin ymax])
+    pause(pause_length)
+end
+
+for i = 1:1:num_obs
+    ampK_sens = (A_obs(i)./amp(i)).*H_AK(i,:) + (B_obs(i)./amp(i)).*H_BK(i,:);
+    ampK_sensmap = reshape(ampK_sens,num_y,num_x);
+    figure
+    clf
+    ax = gca;
+    pc4 = contourf(cgrid{1},cgrid{2}, ampK_sensmap, 10);
+%     set(pc4,'LineStyle','none')
+    hold on
+    plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', 'r', 'MarkerSize', 14)
+    axis equal
+    axis([-35 35 -25 45])
+    xlabel('X Distance (m)')
+    ylabel('Y Distance (m)')
+    c = colorbar;
+    caxis([-7e-4 7e-4])
+    ax.FontSize = 30;
+    set(gcf, 'Position', [100 100 975 975/1.3333])
+    print([print_dir 'amp_sens_' num2str(P(i)) 's'], '-dpng', '-r300')
+    close
+
+    phaseK_sens = (A_obs(i)./phase(i)).*H_AK(i,:) + (-B_obs(i)./phase(i)).*H_BK(i,:);
+    phaseK_sensmap = reshape(phaseK_sens,num_y,num_x);
+    figure
+    clf
+    ax = gca;
+    pc2 = contourf(cgrid{1},cgrid{2}, phaseK_sensmap, 10);
 %     set(pc2,'LineStyle','none')
-%     title(['Pumping test ', num2str(i), ', ln(Amplitude) field'])
-%     axis equal
-%     axis([xmin xmax ymin ymax])
-%     subplot(1,2,2);
-%     pc3 = pcolor(cgrid{1},cgrid{2},phase_field);
-%     set(pc3,'LineStyle','none')
-%     title(['Pumping test ', num2str(i), ', Phase field'])
-%     axis equal
-%     axis([xmin xmax ymin ymax])
-%     pause(pause_length)
-% end
+    hold on
+    plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', 'r', 'MarkerSize', 14)
+    xlabel('X Distance (m)')
+    ylabel('Y Distance (m)')
+    c = colorbar;
+    axis equal
+    axis([-35 35 -25 45])
+    ax.FontSize = 30;
+    set(gcf, 'Position', [100 100 975 975/1.3333])
+    print([print_dir 'phase_sens_' num2str(P(i)) 's'], '-dpng', '-r300')
+    close
+end
 
-% for i = 1:1:num_obs
-%     ampK_sens = (A_obs(i)./amp(i)).*H_AK(i,:) + (B_obs(i)./amp(i)).*H_BK(i,:);
-%     ampK_sensmap = reshape(ampK_sens,num_y,num_x);
-%     figure
-%     clf
-%     ax = gca;
-%     pc4 = contourf(cgrid{1},cgrid{2}, ampK_sensmap, 10);
-% %     set(pc4,'LineStyle','none')
-%     hold on
-%     plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', 'r', 'MarkerSize', 14)
-%     axis equal
-%     axis([-35 35 -25 45])
-%     xlabel('X Distance (m)')
-%     ylabel('Y Distance (m)')
-%     c = colorbar;
-%     caxis([-7e-4 7e-4])
-%     ax.FontSize = 30;
-%     set(gcf, 'Position', [100 100 975 975/1.3333])
-%     print([print_dir 'amp_sens_' num2str(P(i)) 's'], '-dpng', '-r300')
-%     close
-% 
-%     phaseK_sens = (A_obs(i)./phase(i)).*H_AK(i,:) + (-B_obs(i)./phase(i)).*H_BK(i,:);
-%     phaseK_sensmap = reshape(phaseK_sens,num_y,num_x);
-%     figure
-%     clf
-%     ax = gca;
-%     pc2 = contourf(cgrid{1},cgrid{2}, phaseK_sensmap, 10);
-% %     set(pc2,'LineStyle','none')
-%     hold on
-%     plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', 'r', 'MarkerSize', 14)
-%     xlabel('X Distance (m)')
-%     ylabel('Y Distance (m)')
-%     c = colorbar;
-%     axis equal
-%     axis([-35 35 -25 45])
-%     ax.FontSize = 30;
-%     set(gcf, 'Position', [100 100 975 975/1.3333])
-%     print([print_dir 'phase_sens_' num2str(P(i)) 's'], '-dpng', '-r300')
-%     close
-% end
-
-%% Prior covariance setup (Linear variogram)
+%% Prior setup - Linear variogram model
 max_dist = max(max((distmat_row(:,:,1).^2 + distmat_row(:,:,2).^2).^.5));
 slope = 1/max_dist;
 
@@ -411,13 +385,12 @@ Q_row_corr = slope .*...
                           distmat_row(:,:,2).^2).^.5));
                       
 %% Inversion
-R = obs_phasor_covar; R_inv = inv(R); % Data error covariance matrix
-beta_init = [lnK_guess; lnSs_guess]; % Initial parameter guess
-X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)]; % Drift matrix
-y = obs_phasor_vec; % Observation data 
+R = obs_phasor_covar; R_inv = inv(R);
+beta_init = [lnK_guess; lnSs_guess];
+X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
+y = obs_phasor_vec;
 coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
 
-%L-curve inversion loop treating parameter variance as regularization parameter
 num_alpha = numel(lnK_var_est);
 parfor a = 1 : num_alpha
     var_lnK_est = lnK_var_est(a);
@@ -426,6 +399,9 @@ parfor a = 1 : num_alpha
     Q_row_K = Q_row_corr .* var_lnK_est;
     Q_row_Ss = Q_row_corr .* var_lnSs_est;
     Qprod_func = @(invec) covar_product_K_Ss(Q_row_K, Q_row_Ss,invec,num_x,num_y);
+    
+    %TODO: Add loop for L-curve, then produce plot with with misfit norm vs.
+    %linear variogram regularization
     
     tic;
     [params_best, beta_best, H_local, NLAP] = ql_geostat_LM_inv(y,params_init,beta_init,X,R,Qprod_func,h_function,H_tilde_func);
@@ -439,6 +415,6 @@ parfor a = 1 : num_alpha
 end
 
 %% Save output
-save_dir = '/.../.../';
+save_dir = '/.../.../.../';
 save_name = ['geostat_' case_name '.mat'];
 save([save_dir save_name])

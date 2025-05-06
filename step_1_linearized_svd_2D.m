@@ -2,14 +2,14 @@
 
 clear all; close all; clc;
 
-addpath(genpath('.../.../'))
+addpath(genpath('/.../.../.../'))
 
-%% Forward Model Setup
+%% Initialize Forward Modeling Setup
 %PARAMETERS: Visualization and saving options
 pause_length = 0.5;
 
-%% Model Geometry
-% Specify domain
+%% Specify Model Domain Geometry
+%Specify domain
 xmin = -100; xmax = -xmin; dx = 2;
 ymin = xmin; ymax = xmax; dy = dx;
 
@@ -44,8 +44,8 @@ num_wells = size(well_locs,1);
 % NOTE: The model will run the fastest if this list is sorted by angular
 % frequency and pumping well (the first two columns)
 
-V_total = 0.01; % Total fluid volume cycled per period (m^3)
-P = [10 50 90 300 700 1600]; % Pupming periods (s)
+V_total = 0.01;
+P = [10 50 90 300 700 1600];
 test_list = [];
 for i = 1:numel(P)
     for j = 1:num_wells
@@ -60,8 +60,8 @@ end
 
 %% Create the "official" input files needed by the steady periodic model.
 
-%This step should automatically create the input files needed to run all of
-%the steady periodic models.
+%This step automatically creates the input files needed to run all of
+%the steady-periodic models.
 
 [experiment] = OHT_create_inputs(well_locs,test_list,domain);
 
@@ -75,44 +75,47 @@ num_cells = num_x*num_y;
 
 %% Setup grid of cell centers for plotting and geostatistical setups
 [coords, cgrid] = plaid_cellcenter_coord(domain);
+distmat_row = dimdist(coords(1,:),coords); % Distance matrix for correlation matrix
 
-% fig_srcobs_weights = figure(1);
-% set(fig_srcobs_weights,'Position',[58 726 1100 600])
-% pause(1)
-% for i = 1:1:num_omegas
-%     disp(['Period = ', num2str(2*pi./experiment(i).omega)]);
-%     num_testobs = size(experiment(i).tests,1);
-%     for j = 1:1:num_testobs
-%         pump_loc = experiment(i).tests(j,1);
-%         obs_loc = experiment(i).tests(j,2);
-%         subplot(1,2,1)
-%         pumpmap = reshape(full(experiment(i).stims(:,pump_loc)),num_y,num_x);
-%         pm = pcolor(cgrid{1},cgrid{2},pumpmap);
-%         set(pm,'LineStyle','none')
-%         hold on
-%         plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', [0.7592 0 0], 'MarkerSize', 12)
-%         colorbar
-%         title(['Period group ', num2str(i), ', Pump weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([-40 40 -40 40])
-% 
-%         subplot(1,2,2)
-%         obsmap = reshape(full(experiment(i).obs(:,obs_loc)),num_y,num_x);
-%         om = pcolor(cgrid{1},cgrid{2},obsmap);
-%         set(om,'LineStyle','none')
-%         hold on
-%         plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', [0.7592 0 0], 'MarkerSize', 12)
-%         colorbar
-%         title(['Period group ', num2str(i), ', Observation weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([-40 40 -40 40])
-%         pause(pause_length)
-%     end
-% end
+fig_srcobs_weights = figure;
+set(fig_srcobs_weights,'Position',[58 726 1100 600])
+pause(1)
+for i = 1:1:num_omegas
+    disp(['Period = ', num2str(2*pi./experiment(i).omega)]);
+    num_testobs = size(experiment(i).tests,1);
+    for j = 1:1:num_testobs
+        pump_loc = experiment(i).tests(j,1);
+        obs_loc = experiment(i).tests(j,2);
+        subplot(1,2,1)
+        pumpmap = reshape(full(experiment(i).stims(:,pump_loc)),num_y,num_x);
+        pm = pcolor(cgrid{1},cgrid{2},pumpmap);
+        set(pm,'LineStyle','none')
+        hold on
+        plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', [0.7592 0 0], 'MarkerSize', 12)
+        colorbar
+        title(['Period group ', num2str(i), ', Pump weights, test/obs pair #', num2str(j)]);
+        axis equal
+        axis([-40 40 -40 40])
+
+        subplot(1,2,2)
+        obsmap = reshape(full(experiment(i).obs(:,obs_loc)),num_y,num_x);
+        om = pcolor(cgrid{1},cgrid{2},obsmap);
+        set(om,'LineStyle','none')
+        hold on
+        plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerFaceColor', [0.7592 0 0], 'MarkerSize', 12)
+        colorbar
+        title(['Period group ', num2str(i), ', Observation weights, test/obs pair #', num2str(j)]);
+        axis equal
+        axis([-40 40 -40 40])
+        pause(pause_length)
+    end
+end
 
 %% True parameter field for linearized analysis
-lnK_mean = -9.2;   % Mean log(hydraulic conductivity (m/s))
-lnSs_mean = -11.2; % Mean log(specific storage (1/m))
+% PARAMETERS: Associated with creating test case for fields
+%Used by both methods
+lnK_mean = -9.2;
+lnSs_mean = -11.2;
 params_true = [lnK_mean*ones(num_cells,1); lnSs_mean*ones(num_cells,1)];
 
 %% Perform all model runs to generate data
@@ -144,11 +147,6 @@ H_tilde_func = @(params) OHT_run_distribKSs(params, ...
 
 %Generate example sensitivity map given initial homogeneous parameter
 %guesses
-
-%     tic
-%     y_obs = y_func(params_true);
-%     toc
-
 tic
 H_tilde = H_tilde_func(params_true);
 toc
@@ -164,17 +162,20 @@ for i = 1:num_omegas
     % conduct SVD
     H_partial = H_tilde(1:72*i,:);
     [U,S,V] = svd(H_partial);
-    sing_val_mat(1:72*i,i) = diag(S)./max(diag(S)); % Normalized singular values
+
+    % Extract singular values (Normalized by largest singular value)
+    sing_val_mat(1:72*i,i) = diag(S) ./ max(diag(S)); 
 
     % Apply singular value threshold for reduced rank approximation
     p = 72*i;
     Vp = V(:,1:p);
     R = Vp * Vp';
     R_mat(:,i) = diag(R);
+
 end
 
 %% Figures
-% Figure 1 - Singular value spectrum
+% Figure 1 - Singular value decomposition
 figure(1)
 clf 
 ax = gca;
@@ -182,7 +183,7 @@ plot(sing_val_mat, 'LineWidth', 2);
 ax.YScale = 'log';
 grid on
 xlabel('Singular Value Index')
-ylabel('Normalized Singular Value')
+ylabel('Singular Value')
 axis([0 500 1e-15 1e0])
 ax.FontSize = 30;
 ax.MinorGridAlpha = 0.7;
@@ -199,13 +200,13 @@ plot(sing_val_mat, 'LineWidth', 2);
 ax.YScale = 'log';
 grid on
 xlabel('Singular Value Index')
-ylabel('Normalized Singular Value')
+ylabel('Singular Value')
 axis([0 100 1e-5 1e0])
 ax.FontSize = 30;
 ax.MinorGridAlpha = 0.7;
 set(gcf, 'Position', [100 100 975 975/1.3333])
 
-% Figure 2 - Resolution matrix
+% Figure 2 - Transmissivity Resolution matrix
 figure(2)
 clf
 t = tiledlayout(2,3);
@@ -222,6 +223,33 @@ for j = 1 : numel(P)
     end
     ax.FontSize = 30;
     caxis([0 0.4])
+    title(labels{j}, 'FontWeight', 'bold', 'FontSize', 30)
+end
+t.TileSpacing = 'loose';
+t.Padding = 'loose';
+c = colorbar;
+c.Layout.Tile = 'east';
+c.Label.String = 'Resolution (-)';
+c.FontSize = 24;
+set(gcf, 'Position', [100 100 2025 2025/1.75])
+
+% Figure S1 - Storativity Resolution matrix
+figure
+clf
+t = tiledlayout(2,3);
+for j = 1 : numel(P)
+    ax = nexttile;
+    p = pcolor(cgrid{1}, cgrid{2}, reshape(R_mat(num_cells+1:end,j),num_y,num_x));
+    p.LineStyle = 'none';
+    hold on
+    plot(well_locs(:,1), well_locs(:,2), 'ko', 'MarkerSize', 12, 'MarkerFaceColor', [0.7592 0 0])
+    axis([-40 40 -40 40])
+    if j == 1 || j == 4
+        xlabel('X (m)')
+        ylabel('Y (m)')
+    end
+    ax.FontSize = 30;
+    caxis([0 0.6])
     title(labels{j}, 'FontWeight', 'bold', 'FontSize', 30)
 end
 t.TileSpacing = 'loose';

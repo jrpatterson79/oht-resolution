@@ -1,17 +1,19 @@
+%% Cleanup
 
-%% Clean Workspace
 clear all; close all; clc;
 
 %% Specify Directory
-addpath(genpath('/.../.../')) % Specify directory with OHT function files
+addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models
+
 %PARAMETERS: Visualization and saving options
-pause_length = 0.5;
-case_name = '1_freq_low';
+pause_length = 0.01;
+case_name = '4_freq_8m_checker';
 
 %PARAMETERS: Associated with domain and testing setup
-%Specify model geometry
+
+%Specify domain
 xmin = -100; xmax = -xmin; dx = 2;
 ymin = xmin; ymax = xmax; dy = dx;
 
@@ -41,24 +43,22 @@ well_locs = [-20 -20; ...
 
 num_wells = size(well_locs,1);
 
-% Pumping parameters - Currently setup to run volume constrained
-% simulations. Can run flow rate constrained simulations by changing
-% colmun 3 of test_list below from (V*pi)/P to Q_max
-V = 0.01; % Total volume cycled during 1 period (m^3)
-Q_max = 7e-5; % Peak flow rate (m^3/s)
-
-% Pumping periods (s)
-% P = 10;
-% P = 100;
-P = 1600;
-% P = [10 1600];
-% P = [10 50 300 1600];
-% P = [10 50 90 300 700 1600];
-
 % List defining each observation. Columns are:
 % pumping angular frequency, pumping well, Q_max, and observation well
 % NOTE: The model will run the fastest if this list is sorted by angular
 % frequency and pumping well (the first two columns)
+%
+V = 0.01;
+% Q_max = 7e-5; 
+
+% P = 10;
+% P = 100;
+% P = 1600; 
+% P = [10 1600];
+P = [10 50 300 1600];
+% P = [10 50 90 300 700 1600];
+% P = [10 30 50 90 200 300 700 1600];
+
 test_list = [];
 tseries_length = [];
 for i = 1:1:numel(P)
@@ -75,31 +75,38 @@ for i = 1:1:numel(P)
 end
 
 % PARAMETERS: Associated with creating test case for fields
-lnK_mean = -9.2;   % Mean log(hydraulic conductivity (m/s))
-lnSs_mean = -11.2; % Mean log(specific storage (1/m))
 
-% Checkerboard parameters
-xl_check = 10; x_check_offset = 5;   % Checkerboard size x-direction
-yl_check = 10; y_check_offset = 2.5; % Checkerboard size y-direction
-lnK_jump = 2;    % Hydraulic conductivity checkerboard change from mean value
-lnSs_jump = 0.4; % Specific storage checkerboard change from mean value
+%Used by both methods
+lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnSs_mean = -11.2; % Mean log(storativity (-))
+
+% Checkerboard geometry design
+% Individual checker size
+xl_check = 10; x_check_offset = 5;
+yl_check = 10; y_check_offset = 2.5;
+% Parameter deviation from mean value
+lnK_jump = 0.5;
+lnSs_jump = 0.25;
 
 % PARAMETERS: Associated with inversion setup
-lnK_guess = -9;   % Mean conductivity guess
-lnSs_guess = -11; % Mean specific storage guess
- 
-lnK_var_est = 1;    % Estimated conductivity variance
-lnSs_var_est = 0.1; % Estimated specific storage variance
+lnK_guess = -9;   % Transmissivity initial guess
+lnSs_guess = -11; % Storativity initial guess
+
+lnK_var_est = 1;    % Variance log(transmissivity (m^2/s))
+lnSs_var_est = 0.5; % Variance log(storativity (-))
 
 %% Create the "official" input files needed by the steady periodic model.
+
 %This step should automatically create the input files needed to run all of
 %the steady periodic models.
 
 [experiment] = OHT_create_inputs(well_locs,test_list,domain);
 
 %% Calculate counts (used often for plotting and other functionality)
+
 % Calculates number of observations, size of grid, and sets up a
 % meshgridded set of points to do plotting of results.
+
 num_omegas = size(experiment,1);
 num_obs = size(test_list,1);
 num_x = numel(domain.x) - 1;
@@ -109,52 +116,8 @@ num_cells = num_x*num_y;
 %% Setup grid of cell centers for plotting and geostatistical setups
 [coords, cgrid] = plaid_cellcenter_coord(domain);
 
-%% Visualize inputs
-% Each time the angular frequency changes in "test_list", a new "omega
-% group" is created. This is a set of models that get run together, which
-% saves time.
-%
-% This block of code is just to make sure that all of the inputs for the
-% steady periodic model have been created correctly. It will show:
-% 1) In the command window, the current "omega group"
-% 2) In Figure 1, the observation weighting for the current observation
-% 3) In figure 2, the flux weighting for the given pumping test
-%
-% This will loop through all observations as you hit <Enter>, showing the
-% model inputs for each individual model run that generates an observation.
-
-% fig_srcobs_weights = figure(1);
-% set(fig_srcobs_weights,'Position',[58 726 1100 600])
-% pause(1)
-% for i = 1:1:num_omegas
-%     disp(['Period = ', num2str(2*pi./experiment(i).omega)]);
-%     num_testobs = size(experiment(i).tests,1);
-%     for j = 1:1:num_testobs
-%         pump_loc = experiment(i).tests(j,1);
-%         obs_loc = experiment(i).tests(j,2);
-%         subplot(1,2,1)
-%         pumpmap = reshape(full(experiment(i).stims(:,pump_loc)),num_y,num_x);
-%         pm = pcolor(cgrid{1},cgrid{2},pumpmap);
-%         set(pm,'LineStyle','none')
-%         colorbar
-%         title(['Period group ', num2str(i), ', Pump weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([xmin xmax ymin ymax])
-%         subplot(1,2,2)
-%         obsmap = reshape(full(experiment(i).obs(:,obs_loc)),num_y,num_x);
-%         om = pcolor(cgrid{1},cgrid{2},obsmap);
-%         set(om,'LineStyle','none')
-%         colorbar
-%         title(['Period group ', num2str(i), ', Observation weights, test/obs pair #', num2str(j)]);
-%         axis equal
-%         axis([xmin xmax ymin ymax])
-% 
-%         pause(pause_length)
-%     end
-% end
-
 %% For synthetic problem - true parameter field statistics
-% Build checkerboard
+%Checkerboard case
 check_pattern = (sin(pi*(cgrid{1}-x_check_offset)/xl_check)).* ...
                 (sin(pi*(cgrid{2}-y_check_offset)/yl_check));
 
@@ -168,7 +131,6 @@ params_true = ([lnK_true; lnSs_true]);
 lnK_range = [min(lnK_true) max(lnK_true)];
 lnSs_range = [min(lnSs_true) max(lnSs_true)];
 
-% Visualize checkerboard
 figure
 clf
 subplot(1,2,1)
@@ -209,7 +171,7 @@ c.FontSize = 18;
 caxis([lnSs_range(1) lnSs_range(2)])
 ax.FontSize = 20;
 set(gcf, 'Position', [100 100 2025 2025/2.75])
-pause(pause_length)
+pause
 close
 
 %% Perform all model runs to generate data
@@ -265,8 +227,8 @@ toc
 %% Add noise to synthetic data timeseries
 %Parameters used in creating synthetic time-series data and associated
 %noise
-tseries_sd = 0.5e-3;  %Temporal head measurement error standard deviation
-tseries_step = 1/125; %Temporal head time step (125 Hz sampling frequency)
+tseries_sd = 0.5e-3;
+tseries_step = 1/125;
 
 obs_phasor_vec = zeros(2*num_obs,1);
 obs_phasor_covar = zeros(2*num_obs,2*num_obs);
@@ -302,6 +264,7 @@ end
     
 
 %% Cross-checks - visualize results and sensitivities
+
 %These cross-checks are used simply to make sure that the model appears to
 %be running correctly. We calculate the amplitude and phase first (which
 %are more intuitive than A and B), and then look at how these vary with
@@ -392,7 +355,10 @@ num_totalstims = size(amp_full,2);
 %     close
 % end
 
-%% Prior covariace setup
+%% Prior setup - Linear variogram model
+%TODO: Allow choice of different variogram models?
+%TODO: Integrate linear variogram, L-curve estimation of degree of variance
+%allowed.
 distmat_row = dimdist(coords(1,:),coords);
 max_dist = max(max((distmat_row(:,:,1).^2 + distmat_row(:,:,2).^2).^.5));
 slope = 1/max_dist;
@@ -402,10 +368,10 @@ Q_row_corr = slope .*...
                           distmat_row(:,:,2).^2).^.5));
                       
 %% Inversion
-R = obs_phasor_covar; R_inv = inv(R); % Data error covariance matrix
-beta_init = [lnK_guess; lnSs_guess];  % Initial parameter guess
-X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)]; % Parameter drift matrix
-y = obs_phasor_vec; % Measured data
+R = obs_phasor_covar; R_inv = inv(R);
+beta_init = [lnK_guess; lnSs_guess];
+X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
+y = obs_phasor_vec;
 coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
 
 % Build the prior
@@ -419,10 +385,10 @@ tic;
 inv_time = toc;
 
 negloglike_func = @(s,beta) negloglike_eval(y,X,s,beta,Q,R,h_function);
-model_err = norm(params_best(1:num_cells) - X(1:num_cells,1)*beta_best(1)); % Modeled parameter error
-data_err = (y - h_function(params_best))' * R_inv * (y - h_function(params_best)); % Modeled data error
+model_err = norm(params_best(1:num_cells) - X(1:num_cells,1)*beta_best(1));
+data_err = (y - h_function(params_best))' * R_inv * (y - h_function(params_best));
 
 %% Save output
-save_dir = '/.../.../'; % Directory to save inversion output as .mat file
+save_dir = '/.../.../.../';
 save_name = ['chkrbrd_' case_name '.mat'];
 save([save_dir save_name])

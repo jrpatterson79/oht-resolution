@@ -1,18 +1,18 @@
 % Oscillatory Hydraulic Tomography
 
-% This code validates the 2D numercial model used to explore
-% the impact of multiple frequencies on tomographic inversion and model resolution. 
-% The numerical model is validated against the fully confined aquifer analytical model developed by
+% This code validates the 2D numercial model used to explore the impacts of
+% aquifer heterogeneity on oscillatory flow signals. The numerical model is
+% validated using the fully confined analytical model developed by
 % Rasmussen et al. (2003).
 
 % Code developed by Jeremy Patterson
-% Created Mar 2022; Updated Jan 2023
+% Created Dec 2018; Updated Jan 2023
 
 %% Clean Environment
 close all; clear; clc
 
 %% Specify Directory
-addpath(genpath('/.../.../')) % Directory that contains OHT function files
+addpath(genpath('/.../.../.../'))
 
 %% Forward Model 1 Setup
 
@@ -36,7 +36,6 @@ well_locs = [0 0; ...
             ];
 num_wells = size(well_locs,1);
 
-% Radial distance between wells (m)
 r = sqrt((well_locs(:,1) - well_locs(1,1)).^2 + (well_locs(:,2) - well_locs(1,2)).^2);
 
 % Grid Domain
@@ -50,18 +49,9 @@ bdry_L = 1e-5*ones(6,1);
 bdrys = struct('types',bdry_types,'vals',bdry_vals,'leaks',bdry_L);
 
 %% Create Test List
-% Pumping parameters - Currently setup to run volume constrained
-% simulations. Can run flow rate constrained simulations by changing
-% colmun 3 of test_list below from (V*pi)/P to Q_max
-V = 0.01; % Total volume cycled during 1 period (m^3)
-Q_max = 7e-5; % Peak flow rate (m^3/s)
+P = logspace(1, 3.25, 10);
+V = 1e-2;
 
-P = logspace(1, 3.25, 10); % Pumping periods (s)
-
-% List defining each observation. Columns are:
-% pumping angular frequency, pumping well, Q_max, and observation well
-% NOTE: The model will run the fastest if this list is sorted by angular
-% frequency and pumping well (the first two columns)
 test_list = [];
 for i = 1:1:numel(P)
     for j = 2 : num_wells
@@ -74,8 +64,9 @@ end
 
 %% Create the "official" input files needed by the steady periodic model.
 
-%This step creates the input files needed to run all of the steady periodic models. 
-lnK = -9.2; lnSs = -11.2; % Homogeneous K and Ss values for model validation
+%This step should automatically create the input files needed to run all of
+%the steady periodic models. 
+lnK = -9.2; lnSs = -11.2;
 
 lnK_true = lnK * ones(num_cells,1);
 lnSs_true = lnSs * ones(num_cells,1);
@@ -94,7 +85,7 @@ B_syn = y_oht(numobs+1:2*numobs);
 amp_oht = sqrt(A_syn.^2 + B_syn.^2);
 phase_oht = atan2(-B_syn, A_syn);
 
-%% Rasmussen et al.(2003) analytical model results
+%% Analytical Solutions
 T = exp(lnK);
 S = exp(lnSs);
 D = T / S;
@@ -114,7 +105,7 @@ end
 rad_list = unique(rad);
 figure
 clf
-% Amplitude vs period subplot
+
 subplot(1,2,1)
 ax = gca;
 hold on
@@ -128,7 +119,6 @@ ylabel('Amplitude (m)')
 ax.FontSize = 18;
 ax.XScale = 'log';
 
-% Phase vs period subplot
 subplot(1,2,2)
 ax = gca;
 hold on
@@ -140,4 +130,5 @@ xlabel('Period (s)')
 ylabel('Phase Angle (rad)')
 ax.FontSize = 18;
 ax.XScale = 'log';
+
 set(gcf, 'Position', [100 100 1900 700])
