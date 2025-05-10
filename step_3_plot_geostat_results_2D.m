@@ -1,11 +1,21 @@
-% Plot Tomography Results
+% Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
+
+% This code loads .mat files created in step_2_inversion_geostat.m and plots the inverted tomograms for single- and multi-frequency OHT. Error free code execution requires that all single- and multi-freqeuency analyses have been conducted and .mat files created. See lines 21 and 227.
+
+% Unmodified, this code will reproduce the Figures 4-6 in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
 
 %% Clean Environment
 close all; clear; clc
 
-%% Specify Directory
+%% Specify Directories
 load_dir = '/.../.../.../'; % Directory with inversion output .mat files 
-addpath(genpath('/.../.../.../'))
+addpath(genpath('/.../.../.../')) % Directory with OHT3DINV
 
 %% Single-Frequency Analysis
 file_name = {'geostat_1_freq_high';
@@ -19,11 +29,11 @@ for w = 1 : num_case
     reg_idx = 9;
     load([load_dir file_name{w}])
     disp(file_name{w})
-    disp(['T_var = ' num2str(lnK_var_est(reg_idx)) '; S_var = ' num2str(lnSs_var_est(reg_idx))])
+    disp(['T_var = ' num2str(lnT_var_est(reg_idx)) '; S_var = ' num2str(lnS_var_est(reg_idx))])
     
     % Parse T and S parameters for plotting - Calculate correlation
     % coefficient
-    T_range = log10(exp((lnK_range))); S_range = log10(exp(lnSs_range));
+    T_range = log10(exp((lnT_range))); S_range = log10(exp(lnS_range));
     coords_range = find(coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
     % coords_range = find(coords(:,1) > -20 & coords(:,1) < 20 & coords(:,2) > -20 & coords(:,2) < 20);
 
@@ -37,7 +47,7 @@ for w = 1 : num_case
     
 
     %% Calculate Posterior Covariance (T and S) 
-    reg_param = [lnK_var_est(reg_idx); lnSs_var_est(reg_idx)];
+    reg_param = [lnT_var_est(reg_idx); lnS_var_est(reg_idx)];
     num_drift = size(X,2);
 
     H_local = H_tilde_func(params_best_mat(:,reg_idx));    
@@ -225,11 +235,11 @@ for w = 1 : num_case
     reg_idx = 9;
     load([load_dir file_name{w}])
     disp(file_name{w})
-    disp(['T_var = ' num2str(lnK_var_est(reg_idx)) '; S_var = ' num2str(lnSs_var_est(reg_idx))])
+    disp(['T_var = ' num2str(lnT_var_est(reg_idx)) '; S_var = ' num2str(lnS_var_est(reg_idx))])
     
     % Parse T and S parameters for plotting - Calculate correlation
     % coefficient
-    T_range = log10(exp((lnK_range))); S_range = log10(exp(lnSs_range));
+    T_range = log10(exp((lnT_range))); S_range = log10(exp(lnS_range));
     coords_range = find(coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
     % coords_range = find(coords(:,1) > -20 & coords(:,1) < 20 & coords(:,2) > -20 & coords(:,2) < 20);
 
@@ -243,7 +253,7 @@ for w = 1 : num_case
     
 
     %% Calculate Posterior Covariance (T and S) 
-    reg_param = [lnK_var_est(reg_idx); lnSs_var_est(reg_idx)];
+    reg_param = [lnT_var_est(reg_idx); lnS_var_est(reg_idx)];
     num_drift = size(X,2);
 
     H_local = H_tilde_func(params_best_mat(:,reg_idx));    

@@ -1,6 +1,6 @@
 % Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
 
-% This conducts checkerboard testing to assess resolution associated with single- and multi-frequency OHT. The code generates a checkerboard pattern of heterogeneous transmissivity and storativity then produces synthetic data. The generated data is used in geostatistical inverse modeling to determine how well the checkerboard is recovered. The code outputs .mat files with inversion results that are used for plotting in step_8_plot_chkrbrd_results_2D.m.
+% This code conducts checkerboard testing to assess resolution associated with single- and multi-frequency OHT. The code generates a checkerboard pattern of heterogeneous transmissivity and storativity then produces synthetic data. The generated data is used in geostatistical inverse modeling to determine how well the checkerboard is recovered. The code outputs .mat files with inversion results that are used for plotting in step_8_plot_chkrbrd_results_2D.m.
 
 % The user chooses single- or multi-frequency OHT testing by commenting / uncommenting lines 65-71. The user chooses the size of individual checkers on lines 96 and 97.
 
