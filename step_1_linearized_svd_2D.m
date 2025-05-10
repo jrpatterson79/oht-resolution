@@ -1,7 +1,19 @@
-%% Cleanup
+% Oscillatory Hydraulic Tomography Linear Resolution Analysis
 
+% This code conducts numerical modeling experiments to assess transmissivity and storativity resolution associated with OHT using linear inverse modeling theory. This code numerically approximates the Jacobian matrix with homogeneous aquifer parameters then conducts Singular Value Decomposition to plot the singular value spectra and resolution matrices for single- and multi-frequency OHT testing.
+
+% This code generates Figure 1 and Figure 2 as seen in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
+
+%% Clean Environment
 clear all; close all; clc;
 
+% Add path to OHT v0.0.16
 addpath(genpath('/.../.../.../'))
 
 %% Initialize Forward Modeling Setup
@@ -114,9 +126,9 @@ end
 %% True parameter field for linearized analysis
 % PARAMETERS: Associated with creating test case for fields
 %Used by both methods
-lnK_mean = -9.2;
-lnSs_mean = -11.2;
-params_true = [lnK_mean*ones(num_cells,1); lnSs_mean*ones(num_cells,1)];
+lnT_mean = -9.2;
+lnS_mean = -11.2;
+params_true = [lnT_mean*ones(num_cells,1); lnS_mean*ones(num_cells,1)];
 
 %% Perform all model runs to generate data
 
