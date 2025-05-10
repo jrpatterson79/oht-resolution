@@ -1,8 +1,21 @@
-%% Cleanup
+% Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
 
+% This code conducts stochastic geostatistical inverse modeling. In a parallelized loop, this code generates 100 heterogeneous transmissivity and storativity realizations and then conducts inverse modeling for single- and multi-frequency OHT. The code outputs .mat files with inversion results that are used for plotting in step_5_plot_stochastic_results_2D.m.
+
+% The user chooses single- or multi-frequency OHT testing by commenting / uncommenting lines 64-70.
+
+% Unmodified, this code will reproduce the analysis presented in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
+
+%% Clean Environment
 clear; close all; clc;
 
-%% Specify Directory
+%% Specify Directory for OHT3DINV
 addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models
@@ -73,22 +86,22 @@ end
 % PARAMETERS: Associated with creating test case for fields
 
 % Geostatistical parameters
-lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
-lnSs_mean = -11.2; % Mean log(storativity (-))
+lnT_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnS_mean = -11.2; % Mean log(storativity (-))
 
-lnK_var = 2;    % Variance log(transmissivity (m^2/s))
-lnSs_var = 0.5; % Variance log(storativity (-))
+lnT_var = 2;    % Variance log(transmissivity (m^2/s))
+lnS_var = 0.5; % Variance log(storativity (-))
 
 corr_x = 20; % x correlation length (m)
 corr_y = 20; % y correlation length (m)
 
 
 % PARAMETERS: Associated with inversion setup
-lnK_guess = -9;    % Initial guess transmissivity
-lnSs_guess = -11;  % Initial guess storativity
+lnT_guess = -9;    % Initial guess transmissivity
+lnS_guess = -11;  % Initial guess storativity
 
-lnK_var_est = 1;    % Estimated variance - transmissivity
-lnSs_var_est = 0.5; % Estimated variance - storativity
+lnT_var_est = 1;    % Estimated variance - transmissivity
+lnS_var_est = 0.5; % Estimated variance - storativity
 
 %% Create the "official" input files needed by the steady periodic model.
 
@@ -121,12 +134,12 @@ parfor a = 1 : num_relz
         (distmat_row(:,:,1)./corr_x).^2 + ...
         (distmat_row(:,:,2)./corr_y).^2).^.5);
     [corr_relz] = toepmat_vector_math(corr_row,'r',[],2,[num_y num_x]);
-    lnK_true = corr_relz(:,1).*sqrt(lnK_var) + lnK_mean;
-    lnSs_true = corr_relz(:,1) .* sqrt(lnSs_var) + lnSs_mean;
-    params_true = [lnK_true; lnSs_true];
+    lnT_true = corr_relz(:,1).*sqrt(lnT_var) + lnT_mean;
+    lnS_true = corr_relz(:,1) .* sqrt(lnS_var) + lnS_mean;
+    params_true = [lnT_true; lnS_true];
 
-    lnK_range = [min(lnK_true) max(lnK_true)];
-    lnSs_range = [min(lnSs_true) max(lnSs_true)];
+    lnT_range = [min(lnT_true) max(lnT_true)];
+    lnS_range = [min(lnS_true) max(lnS_true)];
 
     %% Perform all model runs to generate data
 
@@ -168,7 +181,7 @@ parfor a = 1 : num_relz
     Phi_true = Phi_function(params_true);
     toc
 
-    params_init = [lnK_guess*ones(num_cells,1); lnSs_guess*ones(num_cells,1)];
+    params_init = [lnT_guess*ones(num_cells,1); lnS_guess*ones(num_cells,1)];
 
     %Generate example sensitivity map given initial homogeneous parameter
     %guesses
@@ -223,13 +236,13 @@ parfor a = 1 : num_relz
 
     %% Inversion
     R = obs_phasor_covar;
-    beta_init = [lnK_guess; lnSs_guess];
+    beta_init = [lnT_guess; lnS_guess];
     X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
     y = obs_phasor_vec;
     coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
 
-    Q_row_K = Q_row_corr .* lnK_var_est;
-    Q_row_Ss = Q_row_corr .* lnSs_var_est;
+    Q_row_K = Q_row_corr .* lnT_var_est;
+    Q_row_Ss = Q_row_corr .* lnS_var_est;
     Qprod_func = @(invec) covar_product_K_Ss(Q_row_K, Q_row_Ss,invec,num_x,num_y);
 
     tic;

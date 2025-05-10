@@ -12,7 +12,7 @@
 % Code developed by Jeremy Patterson
 % Created: March 2022; Updated May 2025
 
-%% Cleanup
+%% Clean Enivronment
 clear all; close all; clc;
 
 %% Specify Directory to OHT3DINV
