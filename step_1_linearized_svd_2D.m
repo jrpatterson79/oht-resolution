@@ -13,7 +13,7 @@
 %% Clean Environment
 clear all; close all; clc;
 
-% Add path to OHT v0.0.16
+% Add path to OHT3DINV
 addpath(genpath('/.../.../.../'))
 
 %% Initialize Forward Modeling Setup

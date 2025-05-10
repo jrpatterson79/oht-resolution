@@ -1,7 +1,21 @@
+% Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
+
+% This code uses a randomly generated 2D field of heterogeneous transmissivity and storativity to produce synthetic data for single and multi-frequency OHT. The code then conducts geostatistical inverse modeling to assess imaging capabilities associated with OHT. The code outputs .mat files with inversion results that are used for plotting in step_3_plot_geostat_results_2D.m.
+
+% The user chooses single- or multi-frequency OHT testing by commenting / uncommenting lines 67-73.
+
+% Unmodified, this code will reproduce the analysis presented in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
+
 %% Cleanup
 clear all; close all; clc;
 
-%% Specify Directory
+%% Specify Directory to OHT3DINV
 addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models
@@ -77,22 +91,22 @@ end
 % PARAMETERS: Associated with creating test case for fields
 
 %Used by both methods
-lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
-lnSs_mean = -11.2; % Mean log(storativity (-))
+lnT_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnS_mean = -11.2; % Mean log(storativity (-))
 
-lnK_var = 2;    % Variance log(transmissivity (m^2/s))
-lnSs_var = 0.5; % Variance log(storativity (-))
+lnT_var = 2;    % Variance log(transmissivity (m^2/s))
+lnS_var = 0.5; % Variance log(storativity (-))
 
 corr_x = 20; % x correlation length (m)
 corr_y = 20; % y correlation length (m)
 
 
 % PARAMETERS: Associated with inversion setup
-lnK_guess = -9;    % Initial guess transmissivity
-lnSs_guess = -11;  % Initial guess storativity
+lnT_guess = -9;    % Initial guess transmissivity
+lnS_guess = -11;  % Initial guess storativity
 
-lnK_var_est = 10.^(-8:1:4);                  % Estimated variance - transmissivity
-lnSs_var_est = 0.5*ones(size(lnK_var_est));  % Estimated variance - storativity
+lnT_var_est = 10.^(-8:1:4);                  % Estimated variance - transmissivity
+lnS_var_est = 0.5*ones(size(lnT_var_est));  % Estimated variance - storativity
 
 %% Create the "official" input files needed by the steady periodic model.
 %This step automatically creates the input files needed to run all of
@@ -167,18 +181,18 @@ corr_row = exp(-(...
     (distmat_row(:,:,1)./corr_x).^2 + ...
     (distmat_row(:,:,2)./corr_y).^2).^.5);
 [corr_relz] = toepmat_vector_math(corr_row,'r',[],2,[num_y num_x]);
-lnK_true = corr_relz(:,1) .* sqrt(lnK_var) + lnK_mean;
-lnSs_true = corr_relz(:,1) .* sqrt(lnSs_var) + lnSs_mean;
-params_true = [lnK_true; lnSs_true];
+lnT_true = corr_relz(:,1) .* sqrt(lnT_var) + lnT_mean;
+lnS_true = corr_relz(:,1) .* sqrt(lnS_var) + lnS_mean;
+params_true = [lnT_true; lnS_true];
 
-lnK_range = [min(lnK_true) max(lnK_true)];
-lnSs_range = [min(lnSs_true) max(lnSs_true)];
+lnT_range = [min(lnT_true) max(lnT_true)];
+lnS_range = [min(lnS_true) max(lnS_true)];
 
 % Figure 3 - Transmissivity realization
 figure (3)
 clf
 ax = gca;
-p3 = pcolor(cgrid{1}, cgrid{2}, reshape(log10(exp(lnK_true)), num_y, num_x));
+p3 = pcolor(cgrid{1}, cgrid{2}, reshape(log10(exp(lnT_true)), num_y, num_x));
 p3.LineStyle = 'none';
 hold on
 plot(well_locs(:,1), well_locs(:,2), 'ko', 'LineWidth', 2,...
@@ -192,7 +206,7 @@ ylabel('Y (m)')
 c = colorbar;
 c.Label.String = 'log_{10}(T [m^2/s])';
 c.FontSize = 24;
-caxis([log10(exp(lnK_range(1))) log10(exp(lnK_range(2)))])
+caxis([log10(exp(lnT_range(1))) log10(exp(lnT_range(2)))])
 ax.FontSize = 30;
 set(gcf, 'Position', [100 100 975 975/1.3333])
 pause
@@ -240,7 +254,7 @@ tic
 Phi_true = Phi_function(params_true);
 toc
 
-params_init = [lnK_guess*ones(num_cells,1); lnSs_guess*ones(num_cells,1)];
+params_init = [lnT_guess*ones(num_cells,1); lnS_guess*ones(num_cells,1)];
 
 %Generate example sensitivity map given initial homogeneous parameter
 %guesses
@@ -386,18 +400,18 @@ Q_row_corr = slope .*...
                       
 %% Inversion
 R = obs_phasor_covar; R_inv = inv(R);
-beta_init = [lnK_guess; lnSs_guess];
+beta_init = [lnT_guess; lnS_guess];
 X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
 y = obs_phasor_vec;
 coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
 
-num_alpha = numel(lnK_var_est);
+num_alpha = numel(lnT_var_est);
 parfor a = 1 : num_alpha
-    var_lnK_est = lnK_var_est(a);
-    var_lnSs_est = lnSs_var_est(a);
+    var_lnT_est = lnT_var_est(a);
+    var_lnS_est = lnS_var_est(a);
     
-    Q_row_K = Q_row_corr .* var_lnK_est;
-    Q_row_Ss = Q_row_corr .* var_lnSs_est;
+    Q_row_K = Q_row_corr .* var_lnT_est;
+    Q_row_Ss = Q_row_corr .* var_lnS_est;
     Qprod_func = @(invec) covar_product_K_Ss(Q_row_K, Q_row_Ss,invec,num_x,num_y);
     
     %TODO: Add loop for L-curve, then produce plot with with misfit norm vs.
