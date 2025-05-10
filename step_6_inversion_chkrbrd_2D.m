@@ -15,7 +15,7 @@
 %% Clean Environment
 clear all; close all; clc;
 
-%% Specify Directory
+%% Specify Directory to OHT3DINV
 addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models

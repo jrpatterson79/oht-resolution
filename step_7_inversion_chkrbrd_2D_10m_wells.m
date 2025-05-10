@@ -1,8 +1,20 @@
-%% Cleanup
+% Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
 
+% This conducts checkerboard testing to assess resolution associated with single-frequency OHT with 10-m well separation. The code generates a checkerboard pattern of heterogeneous transmissivity and storativity then produces synthetic data. The generated data is used in geostatistical inverse modeling to determine how well the checkerboard is recovered. The code outputs .mat files with inversion results that are used for plotting in step_8_plot_chkrbrd_results_2D.m.
+
+% The user chooses the pumping frequency on line 82. The user chooses the size of individual checkers on lines 106 and 107.
+
+% Unmodified, this code will reproduce the analysis presented in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
+%% Clean Environment
 clear all; close all; clc;
 
-%% Specify Directory
+%% Specify Directory to OHT3DINV
 addpath(genpath('/.../.../.../'))
 
 %% Describe the setup for the forward models
@@ -86,23 +98,23 @@ end
 
 % PARAMETERS: Associated with creating test case for fields
 %Used by both methods
-lnK_mean = -9.2;   % Mean log(transmissivity (m^2/s))
-lnSs_mean = -11.2; % Mean log(storativity (-))
+lnT_mean = -9.2;   % Mean log(transmissivity (m^2/s))
+lnS_mean = -11.2; % Mean log(storativity (-))
 
 % Checkerboard geometry design
 % Individual checker size
 xl_check = 10; x_check_offset = 5;
 yl_check = 10; y_check_offset = 2.5;
 % Parameter deviation from mean value
-lnK_jump = 0.5;
-lnSs_jump = 0.25;
+lnT_jump = 0.5;
+lnS_jump = 0.25;
 
 % PARAMETERS: Associated with inversion setup
-lnK_guess = -9;   % Transmissivity initial guess
-lnSs_guess = -11; % Storativity initial guess
+lnT_guess = -9;   % Transmissivity initial guess
+lnS_guess = -11; % Storativity initial guess
 
-lnK_var_est = 1;    % Variance log(transmissivity (m^2/s))
-lnSs_var_est = 0.5; % Variance log(storativity (-))
+lnT_var_est = 1;    % Variance log(transmissivity (m^2/s))
+lnS_var_est = 0.5; % Variance log(storativity (-))
 
 %% Create the "official" input files needed by the steady periodic model.
 
@@ -175,21 +187,21 @@ end
 check_pattern = (sin(pi*(cgrid{1}-x_check_offset)/xl_check)).* ...
     (sin(pi*(cgrid{2}-y_check_offset)/yl_check));
 
-lnK_true_grid = lnK_mean + check_pattern.*lnK_jump;
-lnSs_true_grid = lnSs_mean + check_pattern.*lnSs_jump;
+lnT_true_grid = lnT_mean + check_pattern.*lnT_jump;
+lnS_true_grid = lnS_mean + check_pattern.*lnS_jump;
 
-lnK_true = reshape(lnK_true_grid,num_cells,1);
-lnSs_true = reshape(lnSs_true_grid,num_cells,1);
-params_true = ([lnK_true; lnSs_true]);
+lnT_true = reshape(lnT_true_grid,num_cells,1);
+lnS_true = reshape(lnS_true_grid,num_cells,1);
+params_true = ([lnT_true; lnS_true]);
     
-lnK_range = [min(lnK_true) max(lnK_true)];
-lnSs_range = [min(lnSs_true) max(lnSs_true)];
+lnT_range = [min(lnT_true) max(lnT_true)];
+lnS_range = [min(lnS_true) max(lnS_true)];
 
 figure
 clf
 subplot(1,2,1)
 ax = gca;
-p3 = pcolor(cgrid{1}, cgrid{2}, reshape(lnK_true, num_y, num_x));
+p3 = pcolor(cgrid{1}, cgrid{2}, reshape(lnT_true, num_y, num_x));
 p3.LineStyle = 'none';
 hold on
 plot(well_locs(:,1), well_locs(:,2), 'ko', 'LineWidth', 2,...
@@ -203,12 +215,12 @@ ylabel('Y direction (m)')
 c = colorbar;
 c.Label.String = 'ln(T [m^2/s])';
 c.FontSize = 20;
-caxis([lnK_range(1) lnK_range(2)])
+caxis([lnT_range(1) lnT_range(2)])
 ax.FontSize = 20;
 
 subplot(1,2,2)
 ax = gca;
-p4 = pcolor(cgrid{1}, cgrid{2}, reshape(lnSs_true, num_y, num_x));
+p4 = pcolor(cgrid{1}, cgrid{2}, reshape(lnS_true, num_y, num_x));
 p4.LineStyle = 'none';
 hold on
 plot(well_locs(:,1), well_locs(:,2), 'ko', 'LineWidth', 2,...
@@ -222,7 +234,7 @@ ylabel('Y direction (m)')
 c = colorbar;
 c.Label.String = 'ln(S [-])';
 c.FontSize = 18;
-caxis([lnSs_range(1) lnSs_range(2)])
+caxis([lnS_range(1) lnS_range(2)])
 ax.FontSize = 20;
 set(gcf, 'Position', [100 100 2025 2025/2.75])
 pause
@@ -268,7 +280,7 @@ tic
 Phi_true = Phi_function(params_true);
 toc
 
-params_init = [lnK_guess*ones(num_cells,1); lnSs_guess*ones(num_cells,1)];
+params_init = [lnT_guess*ones(num_cells,1); lnS_guess*ones(num_cells,1)];
 
 %Generate example sensitivity map given initial homogeneous parameter
 %guesses
@@ -418,13 +430,13 @@ Q_row_corr = slope .*...
                       
 %% Inversion
 R = obs_phasor_covar; R_inv = inv(R);
-beta_init = [lnK_guess; lnSs_guess];
+beta_init = [lnT_guess; lnS_guess];
 X = [ones(num_cells,1) zeros(num_cells,1); zeros(num_cells,1) ones(num_cells,1)];
 y = obs_phasor_vec;
 coords_range = (coords(:,1) > -40 & coords(:,1) < 40 & coords(:,2) > -40 & coords(:,2) < 40);
     
-Q_row_K = Q_row_corr .* lnK_var_est;
-Q_row_Ss = Q_row_corr .* lnSs_var_est;
+Q_row_K = Q_row_corr .* lnT_var_est;
+Q_row_Ss = Q_row_corr .* lnS_var_est;
 Qprod_func = @(invec) covar_product_K_Ss(Q_row_K, Q_row_Ss,invec,num_x,num_y);
 
 tic;
