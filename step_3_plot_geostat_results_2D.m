@@ -2,7 +2,7 @@
 
 % This code loads .mat files created in step_2_inversion_geostat.m and plots the inverted tomograms for single- and multi-frequency OHT. Error free code execution requires that all single- and multi-freqeuency analyses have been conducted and .mat files created. See lines 19 and 225.
 
-% Unmodified, this code will reproduce the Figures 4-6 in:
+% Unmodified, this code will reproduce the Figures 4-6 and Figures S2-S4 in:
 % Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
 
 % Code developed by Jeremy Patterson
