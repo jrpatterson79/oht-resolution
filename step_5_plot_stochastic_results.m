@@ -1,11 +1,19 @@
-% Plot Tomography Results
+% Oscillatory Hydraulic Tomography (OHT) Linear Resolution Analysis
+
+% This code loads .mat files created in step_4_stochastic_inversion.m and plots the inverted tomograms for single- and multi-frequency OHT. Error free code execution requires that all single- and multi-freqeuency stochastic analyses have been conducted and .mat files created. See lines 19 and 110.
+
+% Unmodified, this code will reproduce the Figures 7 and 8 in:
+% Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
+
+% Code developed by Jeremy Patterson
+% Created: March 2022; Updated May 2025
 
 %% Clean Environment
 close all; clear; clc
 
-%% Specify Directory
-load_dir = '/.../.../.../';
-addpath(genpath('/Users/jpatt/Dropbox (Personal)/projects/oht_resolution/oht/'))
+%% Specify Directories
+load_dir = '/.../.../.../'; % Directory with inversion output .mat files 
+addpath(genpath('/.../.../.../')) % Directory with OHT3DINV
 
 %% Single Frequency Stochastic Analysis
 file_name = {'stoch_1_freq_high';...
