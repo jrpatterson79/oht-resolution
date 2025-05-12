@@ -5,6 +5,8 @@
 % Unmodified, this code will reproduce the Figures 9-11 and Figures S6-S8 in:
 % Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
 
+% This code requires OHT3DINV v.0.16.0 which can be downloaded at https://github.com/wischydro-cardiff/oscillatory-tomography.git
+
 % Code developed by Jeremy Patterson
 % Created: March 2022; Updated May 2025
 
