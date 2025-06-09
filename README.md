@@ -8,5 +8,3 @@ The code and data are provided as open source under the GNU General Public Licen
 
 ## References
 Patterson, J. R., & Cardiff, M. (2025). Multi‐frequency oscillatory hydraulic tomography improves heterogeneity imaging and resolution and reduces uncertainty. Water Resources Research, 61, e2024WR039606. https://doi.org/10.1029/2024WR039606
-
-Rasmussen, T. C., Haborak, K. G., & Young, M. H. (2003). Estimating aquifer hydraulic properties using sinusoidal pumping at the Savannah River site, South Carolina, USA. Hydrogeology Journal, 11(4), 466–482. https://doi.org/10.1007/s10040-003-0255-7
